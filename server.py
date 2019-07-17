@@ -4,6 +4,8 @@ import socketserver
 import random
 ri = random.randint
 
+from parsearguments import parse
+
 current = 128
 color_offset = 3 # 3=blue, 2=green, 1=red
 YELLOW = [255,255,255,0]
@@ -181,23 +183,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
 
 if __name__ == '__main__':
     import sys
-    args = sys.argv[1:]
-    VERBOSITY = 0
-    HOST, PORT = "localhost", 9999
-    while args:
-        arg = args[0]
-        args = args[1:]
-        if arg in ['-v', '-vv', '-vvv', '-vvvv']:
-            VERBOSITY = len(arg) - 1
-        elif ':' in arg:  # 'localhost:8192'
-            host, port = arg.split(':')
-            if host:
-                HOST = host
-            if port:
-                PORT = int(port)
-        else:
-            print("Unknown argument or option: '%s'" % arg)
-            sys.exit(1)
+    VERBOSITY, HOST, PORT = parse(sys.argv[1:])
 
     print("HOST: %s  PORT: %d  VERBOSITY: %d" % (HOST, PORT, VERBOSITY))
 

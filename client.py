@@ -3,7 +3,10 @@ import pygame
 import socket
 import time
 
+from parsearguments import parse
+
 BLUE=pygame.Color(0,0,255)
+ESC=27
 
 def log(level, *rest):
     if VERBOSITY >= level:
@@ -30,7 +33,7 @@ class App:
         if event.type == pygame.MOUSEBUTTONDOWN:
             msg = bytes('MOUSEBUTTONDOWN %s %s' % (event.pos, event.button), 'ascii')
         elif event.type == pygame.KEYDOWN: # unicode, key, mod
-            if event.key == 27:
+            if event.key == ESC:
                 self._running = False
                 return
             msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
@@ -82,30 +85,14 @@ class App:
  
 if __name__ == '__main__':
     import sys
-    args = sys.argv[1:]
-    VERBOSITY = 0
-    HOST, PORT = "localhost", 9999
-    while args:
-        arg = args[0]
-        args = args[1:]
-        if arg in ['-v', '-vv', '-vvv', '-vvvv']:
-            VERBOSITY = len(arg) - 1
-        elif ':' in arg:  # 'localhost:8192'
-            host, port = arg.split(':')
-            if host:
-                HOST = host
-            if port:
-                PORT = int(port)
-        else:
-            print("Unknown argument or option: '%s'" % arg)
-            sys.exit(1)
-
+    VERBOSITY, HOST, PORT = parse(sys.argv[1:])
     print("HOST: %s  PORT: %d  VERBOSITY: %d" % (HOST, PORT, VERBOSITY))
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, PORT))
     theApp = App()
     theApp.on_execute()
+
 
 """Event types:
 QUIT              none
