@@ -11,6 +11,26 @@ SPACE=32
 
 RAPID_FIRE = False
 
+class Timer:
+    def __init__(self):
+        self.times = [0.0] * 100
+        self.ti = -1
+        self.starttime = 0.0
+
+    def stamptime(self):
+        t = time.time()
+        if self.ti < 0:
+            self.ti = 0
+            self.starttime = t
+        self.times[self.ti] = (t - self.starttime)
+        self.ti = (self.ti + 1) % len(self.times)
+    
+    def printtimes(self):
+        print(self.times)
+
+timer = Timer()
+
+
 def log(level, *rest):
     if VERBOSITY >= level:
         print('client: ', *rest)
@@ -42,6 +62,8 @@ class App:
                 return
             if event.key == SPACE:
                 RAPID_FIRE = True
+            if event.key == 112: # p
+                timer.printtimes()
             msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
         if msg is not None:
             while True:
@@ -50,6 +72,7 @@ class App:
                 rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
                 data = self.receive_all(s, rsize)
                 self.display_data(z, data)
+                timer.stamptime()
                 log(2, "Received: %d %s" % (len(data), data[:100]))
                 if not RAPID_FIRE:
                     break
@@ -59,7 +82,7 @@ class App:
                     if e.type == pygame.KEYUP and e.key == SPACE:
                         RAPID_FIRE = False
                         break
-                    e = pygame.event.poll(pump=False)
+                    e = pygame.event.poll()
                 #time.sleep(0.03)
 
     def receive_all(self, s, rsize):
