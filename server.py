@@ -61,7 +61,7 @@ class Surface(object):
             for dy in range(scale):
                 self.point(x*scale+dx, y*scale+dy, color)
 
-SC = 6
+SC = 12
 SZ=480//SC  
 
 def draw_life(s, current):
@@ -115,40 +115,57 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
             #log(3, "dir self.request:", dir(self.request))
             self.request.sendall(image)
 
+    def handle_mousebuttondown(self, ds):
+        # MOUSEBUTTONDOWN (34, 41) 1
+        global life
+        x = int(ds[1][1:-1])
+        y = int(ds[2][:-1])
+        lifex = x//SC
+        lifey = y//SC
+        if lifex < SZ and lifey < SZ:
+            life[lifex][lifey] = 1 - life[lifex][lifey]
+        #global current
+        #if x < self.width/3:
+        #    current -= 16
+        #elif x > 2*self.width/3:
+        #    current += 16
+        #elif y < self.height/3:
+        #    global color_offset
+        #    color_offset = (color_offset % 3) + 1
+        #current = current % 256
+
+    def handle_keydown(self, ds):
+        global bgi, fgi
+        code = int(ds[1])
+        if ds[2] == b'f':
+            pass
+        if code == 32:
+            log(1, "space")
+            return True
+        if code in [UP, DOWN, RIGHT, LEFT]:
+            if code == UP:
+                bgi = (bgi+1) % len(backgrounds)
+            elif code == DOWN:
+                bgi = (bgi-1) % len(backgrounds)
+            elif code == RIGHT:
+                fgi = (fgi+1) % len(foregrounds)
+            elif code == LEFT:
+                fgi = (fgi-1) % len(foregrounds)
+
     def handle_event(self, data):
-        global delay_update, bgi, fgi
+        global delay_update
+        update = False
         ds = data.split()
         if ds[0] == b'MOUSEBUTTONDOWN':
-            # MOUSEBUTTONDOWN (34, 41) 1
-            x = int(ds[1][1:-1])
-            y = int(ds[2][:-1])
-            global current
-            if x < self.width/3:
-                current -= 16
-            elif x > 2*self.width/3:
-                current += 16
-            elif y < self.height/3:
-                global color_offset
-                color_offset = (color_offset % 3) + 1
-            current = current % 256
-        if ds[0] == b'KEYDOWN':
-            code = int(ds[2])
-            if ds[1] == b'f':
-                pass
-            if code in [UP, DOWN, RIGHT, LEFT]:
-                if code == UP:
-                    bgi = (bgi+1) % len(backgrounds)
-                elif code == DOWN:
-                    bgi = (bgi-1) % len(backgrounds)
-                elif code == RIGHT:
-                    fgi = (fgi+1) % len(foregrounds)
-                elif code == LEFT:
-                    fgi = (fgi-1) % len(foregrounds)
+            update = self.handle_mousebuttondown(ds)
+        elif ds[0] == b'KEYDOWN':
+            update = self.handle_keydown(ds)
 
-        if delay_update == 0:
-            update_life()
-        else:
-            delay_update -= 1
+        if update:
+            if delay_update == 0:
+                update_life()
+            else:
+                delay_update -= 1
 
     def make_image(self):
         # 256 x 256, grayscale: [ 1, 0, 1, 0, 1]

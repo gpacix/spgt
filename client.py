@@ -33,7 +33,7 @@ class App:
             if event.key == 27:
                 self._running = False
                 return
-            msg = bytes('KEYDOWN %s %s %s' % (event.unicode, event.key, event.mod), 'utf-8')
+            msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
         if msg is not None:
             s.send(msg)
             z = s.recv(5)  # Warning: optimistic!
