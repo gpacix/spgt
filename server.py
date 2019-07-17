@@ -8,7 +8,17 @@ current = 128
 color_offset = 3 # 3=blue, 2=green, 1=red
 YELLOW = [255,255,255,0]
 WHITE =  [0,255,255,255]
+BLACK =  [0,0,0,0]
+GRAY  =  [0,128,128,128]
 ORANGE = [0, 255, 192, 128]
+RED    = [0, 255, 0, 0]
+GREEN  = [0, 0, 255, 0]
+BLUE   = [0, 0, 0, 255]
+
+foregrounds = [RED, GREEN, BLUE, ORANGE]
+backgrounds = [BLACK, WHITE, YELLOW, ORANGE, GRAY]
+fgi = 0
+bgi = 0
 
 UP, DOWN, RIGHT, LEFT = 273, 274, 275, 276
 
@@ -56,8 +66,7 @@ SZ=480//SC
 
 def draw_life(s, current):
     #c = (255, 192, 128, 0)
-    c = [0,0,0,0]
-    c[color_offset] = 255
+    c = foregrounds[fgi]
     for x in range(SZ):
         for y in range(SZ):
             if life[x][y] != 0:
@@ -107,7 +116,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
             self.request.sendall(image)
 
     def handle_event(self, data):
-        global delay_update
+        global delay_update, bgi, fgi
         ds = data.split()
         if ds[0] == b'MOUSEBUTTONDOWN':
             # MOUSEBUTTONDOWN (34, 41) 1
@@ -123,10 +132,18 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
                 color_offset = (color_offset % 3) + 1
             current = current % 256
         if ds[0] == b'KEYDOWN':
+            code = int(ds[2])
             if ds[1] == b'f':
                 pass
-            if int(ds[2]) in [UP, DOWN, RIGHT, LEFT]:
-                log(2, ds[2])
+            if code in [UP, DOWN, RIGHT, LEFT]:
+                if code == UP:
+                    bgi = (bgi+1) % len(backgrounds)
+                elif code == DOWN:
+                    bgi = (bgi-1) % len(backgrounds)
+                elif code == RIGHT:
+                    fgi = (fgi+1) % len(foregrounds)
+                elif code == LEFT:
+                    fgi = (fgi-1) % len(foregrounds)
 
         if delay_update == 0:
             update_life()
@@ -140,7 +157,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
         log(3, size)
         # So we're sending ARGB. Strange.
         s = Surface(x, y, d)
-        s.clear(WHITE)
+        s.clear(backgrounds[bgi])
         draw_life(s, current)
         log(4, "current is now ", current)
         return bytearray(size + s.data) # TODO: make size part of Surface
