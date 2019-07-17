@@ -66,34 +66,42 @@ class Surface(object):
 SC = 12
 SZ=480//SC  
 
-def draw_life(s, current):
-    #c = (255, 192, 128, 0)
-    c = foregrounds[fgi]
-    for x in range(SZ):
-        for y in range(SZ):
-            if life[x][y] != 0:
-                s.plot(x, y, SC, c)
-                #s.point(x, y, c)
+class Life(object):
+    def __init__(self, size):
+        self.size = size
+        self.data = [[1,0,0,0,0,0,0,0] * (self.size//8) for _ in range(self.size)]
+        for _ in range(200):
+            self.data[ri(0,self.size-1)][ri(0,self.size-1)] = 1
 
-life = [[1,0,0,0,0,0,0,0] * (SZ//8) for _ in range(SZ)]
-for _ in range(200):
-    life[ri(0,SZ-1)][ri(0,SZ-1)] = 1
+    def draw(self, surface, current):
+        #c = (255, 192, 128, 0)
+        c = foregrounds[fgi]
+        for x in range(self.size):
+            for y in range(self.size):
+                if self.data[x][y] != 0:
+                    surface.plot(x, y, SC, c)
+                    #surface.point(x, y, c)
 
-def update_life():
-    global life
-    l2 = [[0] * SZ for _ in range(SZ)]
-    for x in range(0,SZ):
-        for y in range(0,SZ):
-            left, right = (x - 1) % SZ, (x + 1) % SZ
-            up, down    = (y - 1) % SZ, (y + 1) % SZ
-            neighbors = (life[left][y-1] +  life[left][y]  + life[left][down] +
-                         life[x   ][y-1] +                   life[x  ][down] +
-                         life[right][y-1] + life[right][y] + life[right][down] )
-            if (life[x][y] and neighbors in [2, 3] or
-                life[x][y] == 0 and neighbors == 3):
-                l2[x][y] = 1
-    life = l2
+    def toggle(self, x, y):
+            self.data[x][y] = 1 - self.data[x][y]
+
+    def update(self):
+        SZ = self.size
+        nextdata = [[0] * SZ for _ in range(SZ)]
+        for x in range(0,SZ):
+            for y in range(0,SZ):
+                left, right = (x - 1) % SZ, (x + 1) % SZ
+                up, down    = (y - 1) % SZ, (y + 1) % SZ
+                neighbors = (self.data[left][y-1] +  self.data[left][y]  + self.data[left][down] +
+                             self.data[x   ][y-1] +                        self.data[x  ][down] +
+                             self.data[right][y-1] + self.data[right][y] + self.data[right][down] )
+                if (self.data[x][y] and neighbors in [2, 3] or
+                    self.data[x][y] == 0 and neighbors == 3):
+                    nextdata[x][y] = 1
+        self.data = nextdata
     
+
+life = Life(SZ)
 
 
 class TheRequestHandler(socketserver.BaseRequestHandler):
@@ -119,22 +127,11 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
 
     def handle_mousebuttondown(self, ds):
         # MOUSEBUTTONDOWN (34, 41) 1
-        global life
         x = int(ds[1][1:-1])
         y = int(ds[2][:-1])
-        lifex = x//SC
-        lifey = y//SC
+        lifex, lifey = x//SC, y//SC
         if lifex < SZ and lifey < SZ:
-            life[lifex][lifey] = 1 - life[lifex][lifey]
-        #global current
-        #if x < self.width/3:
-        #    current -= 16
-        #elif x > 2*self.width/3:
-        #    current += 16
-        #elif y < self.height/3:
-        #    global color_offset
-        #    color_offset = (color_offset % 3) + 1
-        #current = current % 256
+            life.toggle(lifex, lifey)
 
     def handle_keydown(self, ds):
         global bgi, fgi
@@ -165,7 +162,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
 
         if update:
             if delay_update == 0:
-                update_life()
+                life.update()
             else:
                 delay_update -= 1
 
@@ -177,7 +174,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
         # So we're sending ARGB. Strange.
         s = Surface(x, y, d)
         s.clear(backgrounds[bgi])
-        draw_life(s, current)
+        life.draw(s, current)
         log(4, "current is now ", current)
         return bytearray(size + s.data) # TODO: make size part of Surface
 
