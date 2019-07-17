@@ -6,6 +6,9 @@ ri = random.randint
 
 current = 128
 color_offset = 3 # 3=blue, 2=green, 1=red
+YELLOW = [255,255,255,0]
+WHITE =  [0,255,255,255]
+ORANGE = [0, 255, 192, 128]
 
 delay_update = 3
 
@@ -25,10 +28,13 @@ def draw_lines(databytes, x, y, d, current):
 
 class Surface(object):
     def __init__(self, w, h, d):
-        self.data = [0] * (w*h*d)
         self.w = w
         self.h = h
         self.d = d
+        self.clear([0,0,0,0])
+
+    def clear(self, color):
+        self.data = color * (self.w * self.h)
 
     def point(self, x, y, color):
         p = (x + y*self.w)*4
@@ -42,8 +48,6 @@ class Surface(object):
         for dx in range(scale):
             for dy in range(scale):
                 self.point(x*scale+dx, y*scale+dy, color)
-        #self.data[(x + y*self.w)*4*scale + color_offset] = 255
-
 
 SC = 6
 SZ=480//SC  
@@ -126,8 +130,8 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
         size = [ (x//256), (x%256), (y//256), (y%256), d]
         log(1, size)
         # So we're sending ARGB. Strange.
-        databytes = [0] * (x*y*d)
         s = Surface(x, y, d)
+        s.clear(WHITE)
         draw_life(s, current)
         log(2, "current is now ", current)
         return bytearray(size + s.data) # TODO: make size part of Surface
