@@ -7,6 +7,9 @@ from parsearguments import parse
 
 BLUE=pygame.Color(0,0,255)
 ESC=27
+SPACE=32
+
+RAPID_FIRE = False
 
 def log(level, *rest):
     if VERBOSITY >= level:
@@ -24,6 +27,7 @@ class App:
         self._running = True
  
     def on_event(self, event):
+        global RAPID_FIRE
         if event.type == pygame.QUIT:
             self._running = False
             return
@@ -36,15 +40,27 @@ class App:
             if event.key == ESC:
                 self._running = False
                 return
+            if event.key == SPACE:
+                RAPID_FIRE = True
             msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
         if msg is not None:
-            s.send(msg)
-            z = s.recv(5)  # Warning: optimistic!
-            rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
-            data = self.receive_all(s, rsize)
-            self.display_data(z, data)
-            log(2, "Received: %d %s" % (len(data), data[:100]))
-            
+            while True:
+                s.send(msg)
+                z = s.recv(5)  # Warning: optimistic!
+                rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
+                data = self.receive_all(s, rsize)
+                self.display_data(z, data)
+                log(2, "Received: %d %s" % (len(data), data[:100]))
+                if not RAPID_FIRE:
+                    break
+                e = pygame.event.poll()
+                while e and RAPID_FIRE:
+                    log(1, e, e.type)
+                    if e.type == pygame.KEYUP and e.key == SPACE:
+                        RAPID_FIRE = False
+                        break
+                    e = pygame.event.poll(pump=False)
+                #time.sleep(0.03)
 
     def receive_all(self, s, rsize):
         r = []
