@@ -26,14 +26,22 @@ class App:
             return
         if event.type != pygame.MOUSEMOTION:
             log(1, event, event.type)
+        msg = None
         if event.type == pygame.MOUSEBUTTONDOWN:
             msg = bytes('MOUSEBUTTONDOWN %s %s' % (event.pos, event.button), 'ascii')
+        elif event.type == pygame.KEYDOWN: # unicode, key, mod
+            if event.key == 27:
+                self._running = False
+                return
+            msg = bytes('KEYDOWN %s %s %s' % (event.unicode, event.key, event.mod), 'utf-8')
+        if msg is not None:
             s.send(msg)
             z = s.recv(5)  # Warning: optimistic!
             rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
             data = self.receive_all(s, rsize)
             self.display_data(z, data)
             log(2, "Received: %d %s" % (len(data), data[:100]))
+            
 
     def receive_all(self, s, rsize):
         r = []

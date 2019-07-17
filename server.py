@@ -10,6 +10,8 @@ YELLOW = [255,255,255,0]
 WHITE =  [0,255,255,255]
 ORANGE = [0, 255, 192, 128]
 
+UP, DOWN, RIGHT, LEFT = 273, 274, 275, 276
+
 delay_update = 3
 
 def log(level, *rest):
@@ -94,7 +96,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
             if (len(self.data) == 0):
                 break
             # logging:
-            log(2, "{} sent:".format(self.client_address[0]))
+            log(3, "{} sent:".format(self.client_address[0]))
             log(2, self.data)
 
             self.handle_event(self.data)
@@ -106,10 +108,11 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
 
     def handle_event(self, data):
         global delay_update
-        if data.startswith(b'MOUSEBUTTONDOWN'):
+        ds = data.split()
+        if ds[0] == b'MOUSEBUTTONDOWN':
             # MOUSEBUTTONDOWN (34, 41) 1
-            x = int(data.split()[1][1:-1])
-            y = int(data.split()[2][:-1])
+            x = int(ds[1][1:-1])
+            y = int(ds[2][:-1])
             global current
             if x < self.width/3:
                 current -= 16
@@ -119,25 +122,31 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
                 global color_offset
                 color_offset = (color_offset % 3) + 1
             current = current % 256
-            if delay_update == 0:
-                update_life()
-            else:
-                delay_update -= 1
+        if ds[0] == b'KEYDOWN':
+            if ds[1] == b'f':
+                pass
+            if int(ds[2]) in [UP, DOWN, RIGHT, LEFT]:
+                log(2, ds[2])
+
+        if delay_update == 0:
+            update_life()
+        else:
+            delay_update -= 1
 
     def make_image(self):
         # 256 x 256, grayscale: [ 1, 0, 1, 0, 1]
         x,y,d = self.width, self.height, self.depth
         size = [ (x//256), (x%256), (y//256), (y%256), d]
-        log(1, size)
+        log(3, size)
         # So we're sending ARGB. Strange.
         s = Surface(x, y, d)
         s.clear(WHITE)
         draw_life(s, current)
-        log(2, "current is now ", current)
+        log(4, "current is now ", current)
         return bytearray(size + s.data) # TODO: make size part of Surface
 
 if __name__ == '__main__':
     HOST, PORT = "localhost", 9999
-    VERBOSITY = 0
+    VERBOSITY = 2
     tcp_server = socketserver.TCPServer((HOST, PORT), TheRequestHandler)
     tcp_server.serve_forever()
