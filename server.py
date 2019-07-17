@@ -180,7 +180,26 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
         return bytearray(size + s.data) # TODO: make size part of Surface
 
 if __name__ == '__main__':
+    import sys
+    args = sys.argv[1:]
+    VERBOSITY = 0
     HOST, PORT = "localhost", 9999
-    VERBOSITY = 2
+    while args:
+        arg = args[0]
+        args = args[1:]
+        if arg in ['-v', '-vv', '-vvv', '-vvvv']:
+            VERBOSITY = len(arg) - 1
+        elif ':' in arg:  # 'localhost:8192'
+            host, port = arg.split(':')
+            if host:
+                HOST = host
+            if port:
+                PORT = int(port)
+        else:
+            print("Unknown argument or option: '%s'" % arg)
+            sys.exit(1)
+
+    print("HOST: %s  PORT: %d  VERBOSITY: %d" % (HOST, PORT, VERBOSITY))
+
     tcp_server = socketserver.TCPServer((HOST, PORT), TheRequestHandler)
     tcp_server.serve_forever()
