@@ -17,11 +17,6 @@ RED    = [0, 255, 0, 0]
 GREEN  = [0, 0, 255, 0]
 BLUE   = [0, 0, 0, 255]
 
-foregrounds = [RED, GREEN, BLUE, ORANGE]
-backgrounds = [BLACK, WHITE, YELLOW, ORANGE, GRAY]
-fgi = 0
-bgi = 0
-
 UP, DOWN, RIGHT, LEFT = 273, 274, 275, 276
 
 delay_update = 3
@@ -39,6 +34,24 @@ def draw_lines(databytes, x, y, d, current):
     for j in range(y):
         for i in range(0,x,max(current,1)):
             databytes[(j*x + i)*4+color_offset] = 255
+
+class Wheel:
+    def __init__(self, items):
+        self.items = items[:]
+        self.index = 0
+
+    def current(self):
+        return self.items[self.index]
+
+    def forward(self):
+        self.index = (self.index + 1) % len(self.items)
+
+    def backward(self):
+        self.index = (self.index - 1) % len(self.items)
+
+foregrounds = Wheel([RED, GREEN, BLUE, ORANGE])
+backgrounds = Wheel([BLACK, WHITE, YELLOW, ORANGE, GRAY])
+
 
 class Surface(object):
     def __init__(self, w, h, d):
@@ -75,7 +88,7 @@ class Life(object):
 
     def draw(self, surface, current):
         #c = (255, 192, 128, 0)
-        c = foregrounds[fgi]
+        c = foregrounds.current()
         for x in range(self.size):
             for y in range(self.size):
                 if self.data[x][y] != 0:
@@ -99,7 +112,7 @@ class Life(object):
                     self.data[x][y] == 0 and neighbors == 3):
                     nextdata[x][y] = 1
         self.data = nextdata
-    
+
 
 life = Life(SZ)
 
@@ -134,7 +147,6 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
             life.toggle(lifex, lifey)
 
     def handle_keydown(self, ds):
-        global bgi, fgi
         code = int(ds[1])
         if ds[2] == b'f':
             pass
@@ -143,13 +155,14 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
             return True
         if code in [UP, DOWN, RIGHT, LEFT]:
             if code == UP:
-                bgi = (bgi+1) % len(backgrounds)
+                backgrounds.forward()
             elif code == DOWN:
-                bgi = (bgi-1) % len(backgrounds)
+                backgrounds.backward()
             elif code == RIGHT:
-                fgi = (fgi+1) % len(foregrounds)
+                foregrounds.forward()
             elif code == LEFT:
-                fgi = (fgi-1) % len(foregrounds)
+                foregrounds.backward()
+
 
     def handle_event(self, data):
         global delay_update
@@ -166,14 +179,17 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
             else:
                 delay_update -= 1
 
+    def make_size(self, x, y, d):
+        return [ (x//256), (x%256), (y//256), (y%256), d]
+
     def make_image(self):
         # 256 x 256, grayscale: [ 1, 0, 1, 0, 1]
         x,y,d = self.width, self.height, self.depth
-        size = [ (x//256), (x%256), (y//256), (y%256), d]
+        size = self.make_size(x, y, d)
         log(3, size)
         # So we're sending ARGB. Strange.
         s = Surface(x, y, d)
-        s.clear(backgrounds[bgi])
+        s.clear(backgrounds.current())
         life.draw(s, current)
         log(4, "current is now ", current)
         return bytearray(size + s.data) # TODO: make size part of Surface
