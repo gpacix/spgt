@@ -65,11 +65,13 @@ for _ in range(200):
 def update_life():
     global life
     l2 = [[0] * SZ for _ in range(SZ)]
-    for x in range(1,SZ-1):
-        for y in range(1,SZ-1):
-            neighbors = (life[x-1][y-1] + life[x-1][y] + life[x-1][y+1] +
-                         life[x  ][y-1] +                life[x  ][y+1] +
-                         life[x+1][y-1] + life[x+1][y] + life[x+1][y+1] )
+    for x in range(0,SZ):
+        for y in range(0,SZ):
+            left, right = (x - 1) % SZ, (x + 1) % SZ
+            up, down    = (y - 1) % SZ, (y + 1) % SZ
+            neighbors = (life[left][y-1] +  life[left][y]  + life[left][down] +
+                         life[x   ][y-1] +                   life[x  ][down] +
+                         life[right][y-1] + life[right][y] + life[right][down] )
             if (life[x][y] and neighbors in [2, 3] or
                 life[x][y] == 0 and neighbors == 3):
                 l2[x][y] = 1
