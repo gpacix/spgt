@@ -76,8 +76,8 @@ class Surface(object):
             for dy in range(scale):
                 self.point(x*scale+dx, y*scale+dy, color)
 
-SC = 12
-SZ=480//SC  
+SC = 8
+SZ=16 #(480//2)//SC
 
 class Life(object):
     def __init__(self, size):
@@ -121,7 +121,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
     """ TCP Request handler """
 
     def handle(self):
-        self.width, self.height = 640, 480
+        self.width, self.height = 640//2, 480//2
         self.depth = 4  # in bytes
         while True:
             self.data = self.request.recv(1024).strip()

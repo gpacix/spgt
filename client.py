@@ -31,6 +31,8 @@ class Timer:
 timer = Timer()
 
 
+WIDTH, HEIGHT = 320, 240
+
 def log(level, *rest):
     if VERBOSITY >= level:
         print('client: ', *rest)
@@ -39,7 +41,7 @@ class App:
     def __init__(self):
         self._running = True
         self._display_surf = None
-        self.size = self.width, self.height = 640, 480
+        self.size = self.width, self.height = WIDTH, HEIGHT
  
     def on_init(self):
         pygame.init()
@@ -67,10 +69,17 @@ class App:
             msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
         if msg is not None:
             while True:
+                log(3, "sending %s" % msg)
+                timer.stamptime()
                 s.send(msg)
+                log(3, "awaiting recv...")
+                timer.stamptime()
                 z = s.recv(5)  # Warning: optimistic!
+                log(3, "recv complete: %s" % z)
+                timer.stamptime()
                 rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
                 data = self.receive_all(s, rsize)
+                timer.stamptime()
                 self.display_data(z, data)
                 timer.stamptime()
                 log(2, "Received: %d %s" % (len(data), data[:100]))
