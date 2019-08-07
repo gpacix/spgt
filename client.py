@@ -9,7 +9,6 @@ BLUE=pygame.Color(0,0,255)
 ESC=27
 SPACE=32
 
-RAPID_FIRE = False
 
 class Timer:
     def __init__(self):
@@ -31,8 +30,6 @@ class Timer:
 timer = Timer()
 
 
-WIDTH, HEIGHT = 320, 240
-
 def log(level, *rest):
     if VERBOSITY >= level:
         print('client: ', *rest)
@@ -41,15 +38,48 @@ class App:
     def __init__(self):
         self._running = True
         self._display_surf = None
-        self.size = self.width, self.height = WIDTH, HEIGHT
- 
+        self.size = self.width, self.height = 0, 0
+        self.rapid_fire = False
+
+    def ensure_display(self, width, height, color_mode):
+        if self._display_surf is None:
+            self.size = self.width, self.height = width, height
+            self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
+
     def on_init(self):
         pygame.init()
-        self._display_surf = pygame.display.set_mode(self.size, pygame.DOUBLEBUF) # pygame.HWSURFACE | 
+        msg = bytes('MOUSEBUTTONDOWN (0, 0) 1', 'ascii')
+        self.send_message(msg)
         self._running = True
- 
+
+    def send_message(self, msg):
+        while True:
+            log(3, "sending %s" % msg)
+            timer.stamptime()
+            s.send(msg)
+            log(3, "awaiting recv...")
+            timer.stamptime()
+            z = s.recv(5)  # Warning: optimistic!
+            log(3, "recv complete: %s" % z)
+            timer.stamptime()
+            rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
+            data = self.receive_all(s, rsize)
+            timer.stamptime()
+            self.display_data(z, data)
+            timer.stamptime()
+            log(2, "Received: %d %s" % (len(data), data[:100]))
+            if not self.rapid_fire:
+                break
+            e = pygame.event.poll()
+            while e and self.rapid_fire:
+                log(1, e, e.type)
+                if e.type == pygame.KEYUP and e.key == SPACE:
+                    self.rapid_fire = False
+                    break
+                e = pygame.event.poll()
+            #time.sleep(0.03)
+
     def on_event(self, event):
-        global RAPID_FIRE
         if event.type == pygame.QUIT:
             self._running = False
             return
@@ -63,36 +93,12 @@ class App:
                 self._running = False
                 return
             if event.key == SPACE:
-                RAPID_FIRE = True
+                self.rapid_fire = True
             if event.key == 112: # p
                 timer.printtimes()
             msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
         if msg is not None:
-            while True:
-                log(3, "sending %s" % msg)
-                timer.stamptime()
-                s.send(msg)
-                log(3, "awaiting recv...")
-                timer.stamptime()
-                z = s.recv(5)  # Warning: optimistic!
-                log(3, "recv complete: %s" % z)
-                timer.stamptime()
-                rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
-                data = self.receive_all(s, rsize)
-                timer.stamptime()
-                self.display_data(z, data)
-                timer.stamptime()
-                log(2, "Received: %d %s" % (len(data), data[:100]))
-                if not RAPID_FIRE:
-                    break
-                e = pygame.event.poll()
-                while e and RAPID_FIRE:
-                    log(1, e, e.type)
-                    if e.type == pygame.KEYUP and e.key == SPACE:
-                        RAPID_FIRE = False
-                        break
-                    e = pygame.event.poll()
-                #time.sleep(0.03)
+            self.send_message(msg)
 
     def receive_all(self, s, rsize):
         r = []
@@ -110,10 +116,12 @@ class App:
  
     def display_data(self, z, data):
         log(2, "z has %d bytes" % len(z))
+        log(2, "data has %d bytes" % len(data))
         width = z[0]*256 + z[1]
         height = z[2]*256 + z[3]
         color_mode = z[4]
         log(1, "width: %d  height: %d  color_mode: %d" % (width, height, color_mode))
+        self.ensure_display(width, height, color_mode)
         buf = self._display_surf.get_buffer()
         #self._display_surf.fill(pygame.Color(data[0],data[0],data[0]), (0,0,width,height))
         buf.write(data)
@@ -124,7 +132,7 @@ class App:
         if self.on_init() == False:
             self._running = False
  
-        while( self._running ):
+        while self._running:
             for event in pygame.event.get():
                 self.on_event(event)
             self.on_loop()

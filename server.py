@@ -76,13 +76,22 @@ class Surface(object):
             for dy in range(scale):
                 self.point(x*scale+dx, y*scale+dy, color)
 
-SC = 8
-SZ=16 #(480//2)//SC
+WIDTH, HEIGHT = 320*3, 256*3
+
+SC = 32
+SZ=23
+
 
 class Life(object):
     def __init__(self, size):
         self.size = size
-        self.data = [[1,0,0,0,0,0,0,0] * (self.size//8) for _ in range(self.size)]
+        self.data = [[0] * self.size for _ in range(self.size)]
+        # Stripe every 8:
+        for i in range(self.size):
+            col = self.data[i]
+            for j in range(0, self.size, 8):
+                col[j] = 1
+        
         for _ in range(200):
             self.data[ri(0,self.size-1)][ri(0,self.size-1)] = 1
 
@@ -116,12 +125,11 @@ class Life(object):
 
 life = Life(SZ)
 
-
 class TheRequestHandler(socketserver.BaseRequestHandler):
     """ TCP Request handler """
 
     def handle(self):
-        self.width, self.height = 640//2, 480//2
+        self.width, self.height = WIDTH, HEIGHT
         self.depth = 4  # in bytes
         while True:
             self.data = self.request.recv(1024).strip()
