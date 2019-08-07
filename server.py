@@ -5,17 +5,7 @@ import random
 ri = random.randint
 
 from parsearguments import parse
-
-current = 128
-color_offset = 3 # 3=blue, 2=green, 1=red
-YELLOW = [255,255,255,0]
-WHITE =  [0,255,255,255]
-BLACK =  [0,0,0,0]
-GRAY  =  [0,128,128,128]
-ORANGE = [0, 255, 192, 128]
-RED    = [0, 255, 0, 0]
-GREEN  = [0, 0, 255, 0]
-BLUE   = [0, 0, 0, 255]
+from colors import *
 
 UP, DOWN, RIGHT, LEFT = 273, 274, 275, 276
 
@@ -29,6 +19,8 @@ def draw_random(databytes, x, y, d, current):
     for p in range(x*y):
         databytes[p*d+1] = ri(0,255)
         databytes[p*d+3] = current
+
+color_offset = 3 # 3=blue, 2=green, 1=red
 
 def draw_lines(databytes, x, y, d, current):
     for j in range(y):
@@ -58,28 +50,37 @@ class Surface(object):
         self.w = w
         self.h = h
         self.d = d
-        self.clear([0,0,0,0])
+        self.clear(BLACK)
 
     def clear(self, color):
+        if self.d == 1:
+            color = [argbtoi[color]]
+        else:
+            color = list(color)
         self.data = color * (self.w * self.h)
 
     def point(self, x, y, color):
-        p = (x + y*self.w)*4
-        self.data[p + 0] = color[0]
-        self.data[p + 1] = color[1]
-        self.data[p + 2] = color[2]
-        self.data[p + 3] = color[3]
+        p = (x + y*self.w) * self.d
+        if self.d == 1:
+            self.data[p] = color
+        else:
+            self.data[p + 0] = color[0]
+            self.data[p + 1] = color[1]
+            self.data[p + 2] = color[2]
+            self.data[p + 3] = color[3]
 
     # TODO: make this more efficient
     def plot(self, x, y, scale, color):
+        if self.d == 1:
+            color = argbtoi[color]
         for dx in range(scale):
             for dy in range(scale):
                 self.point(x*scale+dx, y*scale+dy, color)
 
-WIDTH, HEIGHT = 320*3, 256*3
+WIDTH, HEIGHT = 640//4, 480//4 # 320*3, 256*3
 
-SC = 32
-SZ=23
+SC = 1
+SZ = 120
 
 
 class Life(object):
@@ -95,7 +96,7 @@ class Life(object):
         for _ in range(200):
             self.data[ri(0,self.size-1)][ri(0,self.size-1)] = 1
 
-    def draw(self, surface, current):
+    def draw(self, surface):
         #c = (255, 192, 128, 0)
         c = foregrounds.current()
         for x in range(self.size):
@@ -130,7 +131,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         self.width, self.height = WIDTH, HEIGHT
-        self.depth = 4  # in bytes
+        self.depth = 1  # in bytes
         while True:
             self.data = self.request.recv(1024).strip()
             if (len(self.data) == 0):
@@ -192,14 +193,12 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
 
     def make_image(self):
         # 256 x 256, grayscale: [ 1, 0, 1, 0, 1]
-        x,y,d = self.width, self.height, self.depth
-        size = self.make_size(x, y, d)
+        size = self.make_size(self.width, self.height, self.depth)
         log(3, size)
         # So we're sending ARGB. Strange.
-        s = Surface(x, y, d)
+        s = Surface(self.width, self.height, self.depth)
         s.clear(backgrounds.current())
-        life.draw(s, current)
-        log(4, "current is now ", current)
+        life.draw(s)
         return bytearray(size + s.data) # TODO: make size part of Surface
 
 if __name__ == '__main__':

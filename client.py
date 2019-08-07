@@ -4,11 +4,11 @@ import socket
 import time
 
 from parsearguments import parse
+from colors import *
 
-BLUE=pygame.Color(0,0,255)
+#BLUE=pygame.Color(0,0,255)
 ESC=27
 SPACE=32
-
 
 class Timer:
     def __init__(self):
@@ -45,12 +45,24 @@ class App:
         if self._display_surf is None:
             self.size = self.width, self.height = width, height
             self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
+        return self._display_surf
 
     def on_init(self):
         pygame.init()
-        msg = bytes('MOUSEBUTTONDOWN (0, 0) 1', 'ascii')
+        msg = bytes('KEYDOWN 32 0  ', 'ascii')
         self.send_message(msg)
         self._running = True
+
+    def receive_frame(self):
+        z = self.receive_all(s, 5)  # Warning: optimistic!
+        log(3, "recv complete: %s" % z)
+        timer.stamptime()
+        rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
+        data = self.receive_all(s, rsize)
+        timer.stamptime()
+        self.display_data(z, data)
+        timer.stamptime()
+        log(2, "Received: %d %s" % (len(data), data[:100]))
 
     def send_message(self, msg):
         while True:
@@ -59,15 +71,7 @@ class App:
             s.send(msg)
             log(3, "awaiting recv...")
             timer.stamptime()
-            z = s.recv(5)  # Warning: optimistic!
-            log(3, "recv complete: %s" % z)
-            timer.stamptime()
-            rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
-            data = self.receive_all(s, rsize)
-            timer.stamptime()
-            self.display_data(z, data)
-            timer.stamptime()
-            log(2, "Received: %d %s" % (len(data), data[:100]))
+            self.receive_frame()
             if not self.rapid_fire:
                 break
             e = pygame.event.poll()
@@ -121,10 +125,18 @@ class App:
         height = z[2]*256 + z[3]
         color_mode = z[4]
         log(1, "width: %d  height: %d  color_mode: %d" % (width, height, color_mode))
-        self.ensure_display(width, height, color_mode)
-        buf = self._display_surf.get_buffer()
+        buf = self.ensure_display(width, height, color_mode).get_buffer()
+        log(1, "buf.length = %d" % buf.length)
         #self._display_surf.fill(pygame.Color(data[0],data[0],data[0]), (0,0,width,height))
-        buf.write(data)
+        if color_mode == 1:
+            data1 = []
+            for i in range(len(data)):
+                argb = itoargb[data[i]]
+                data1 += list(argb)
+            data2 = bytes(data1)
+            buf.write(data2)
+        else:
+            buf.write(data)
         self._display_surf.unlock()
         pygame.display.update()
 
