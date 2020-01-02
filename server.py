@@ -77,11 +77,6 @@ class Surface(object):
             for dy in range(scale):
                 self.point(x*scale+dx, y*scale+dy, color)
 
-# used by TheRequestHandler, which passes them to a Surface:
-WIDTH, HEIGHT = 640//4, 480//4 # 320*3, 256*3
-# Basically, this is the desired display size
-# The Life game's size*scale better be less than min(WIDTH, HEIGHT).
-
 
 class Life(object):
     def __init__(self, size):
@@ -200,6 +195,7 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
         life.draw(s)
         return bytearray(size + s.data) # TODO: make size part of Surface
 
+
 if __name__ == '__main__':
     import sys
     vals = {'HOST': "localhost", 'PORT': 9999, 'VERBOSITY': 0, 'SCALE': 1, 'SIZE': 120}
@@ -208,7 +204,13 @@ if __name__ == '__main__':
     
     life = Life(SIZE)
 
-    print("HOST: %s  PORT: %d  VERBOSITY: %d  SCALE: %d  SIZE: %d" % (HOST, PORT, VERBOSITY, SCALE, SIZE))
+    # min(WIDTH, HEIGHT) must be greater than or equal to the Life game's size*scale
+    MIN = SIZE * SCALE
+    # This is the desired display size; used by TheRequestHandler, which passes them to a Surface:
+    WIDTH, HEIGHT = MIN + 2, MIN
+
+    print("HOST: %s  PORT: %d  VERBOSITY: %d" % (HOST, PORT, VERBOSITY))
+    print("SCALE: %d  SIZE: %d  WIDTH x HEIGHT: %d x %d" % (SCALE, SIZE, WIDTH, HEIGHT))
 
     tcp_server = socketserver.TCPServer((HOST, PORT), TheRequestHandler)
     tcp_server.serve_forever()
