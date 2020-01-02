@@ -15,17 +15,17 @@ def log(level, *rest):
     if VERBOSITY >= level:
         print('server: ', *rest)
 
-def draw_random(databytes, x, y, d, current):
-    for p in range(x*y):
-        databytes[p*d+1] = ri(0,255)
-        databytes[p*d+3] = current
-
-color_offset = 3 # 3=blue, 2=green, 1=red
-
-def draw_lines(databytes, x, y, d, current):
-    for j in range(y):
-        for i in range(0,x,max(current,1)):
-            databytes[(j*x + i)*4+color_offset] = 255
+# def draw_random(databytes, x, y, d, current):
+#     for p in range(x*y):
+#         databytes[p*d+1] = ri(0,255)
+#         databytes[p*d+3] = current
+# 
+# color_offset = 3 # 3=blue, 2=green, 1=red
+# 
+# def draw_lines(databytes, x, y, d, current):
+#     for j in range(y):
+#         for i in range(0,x,max(current,1)):
+#             databytes[(j*x + i)*4+color_offset] = 255
 
 class Wheel:
     def __init__(self, items):
@@ -46,22 +46,22 @@ backgrounds = Wheel([BLACK, WHITE, YELLOW, ORANGE, GRAY])
 
 
 class Surface(object):
-    def __init__(self, w, h, d):
-        self.w = w
-        self.h = h
-        self.d = d
+    def __init__(self, width, height, depth_in_bytes):
+        self.width = width
+        self.height = height
+        self.depth = depth_in_bytes
         self.clear(BLACK)
 
     def clear(self, color):
-        if self.d == 1:
+        if self.depth == 1:
             color = [argbtoi[color]]
         else:
             color = list(color)
-        self.data = color * (self.w * self.h)
+        self.data = color * (self.width * self.height)
 
     def point(self, x, y, color):
-        p = (x + y*self.w) * self.d
-        if self.d == 1:
+        p = (x + y*self.width) * self.depth
+        if self.depth == 1:
             self.data[p] = color
         else:
             self.data[p + 0] = color[0]
@@ -71,7 +71,7 @@ class Surface(object):
 
     # TODO: make this more efficient
     def plot(self, x, y, scale, color):
-        if self.d == 1:
+        if self.depth == 1:
             color = argbtoi[color]
         for dx in range(scale):
             for dy in range(scale):
@@ -79,8 +79,8 @@ class Surface(object):
 
 WIDTH, HEIGHT = 640//4, 480//4 # 320*3, 256*3
 
-SC = 1
-SZ = 120
+SCALE = 1
+SIZE = 120
 
 
 class Life(object):
@@ -102,7 +102,7 @@ class Life(object):
         for x in range(self.size):
             for y in range(self.size):
                 if self.data[x][y] != 0:
-                    surface.plot(x, y, SC, c)
+                    surface.plot(x, y, SCALE, c)
                     #surface.point(x, y, c)
 
     def toggle(self, x, y):
@@ -110,21 +110,22 @@ class Life(object):
 
     def update(self):
         SZ = self.size
+        D  = self.data
         nextdata = [[0] * SZ for _ in range(SZ)]
         for x in range(0,SZ):
             for y in range(0,SZ):
                 left, right = (x - 1) % SZ, (x + 1) % SZ
                 up, down    = (y - 1) % SZ, (y + 1) % SZ
-                neighbors = (self.data[left][y-1] +  self.data[left][y]  + self.data[left][down] +
-                             self.data[x   ][y-1] +                        self.data[x  ][down] +
-                             self.data[right][y-1] + self.data[right][y] + self.data[right][down] )
-                if (self.data[x][y] and neighbors in [2, 3] or
-                    self.data[x][y] == 0 and neighbors == 3):
+                neighbors = (D[left][y-1] +  D[left][y]  + D[left][down] +
+                             D[x   ][y-1] +                D[x  ][down] +
+                             D[right][y-1] + D[right][y] + D[right][down] )
+                if (D[x][y] and neighbors in [2, 3] or
+                    D[x][y] == 0 and neighbors == 3):
                     nextdata[x][y] = 1
         self.data = nextdata
 
 
-life = Life(SZ)
+life = Life(SIZE)
 
 class TheRequestHandler(socketserver.BaseRequestHandler):
     """ TCP Request handler """
@@ -151,8 +152,8 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
         # MOUSEBUTTONDOWN (34, 41) 1
         x = int(ds[1][1:-1])
         y = int(ds[2][:-1])
-        lifex, lifey = x//SC, y//SC
-        if lifex < SZ and lifey < SZ:
+        lifex, lifey = x//SCALE, y//SCALE
+        if lifex < SIZE and lifey < SIZE:
             life.toggle(lifex, lifey)
 
     def handle_keydown(self, ds):
@@ -188,8 +189,8 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
             else:
                 delay_update -= 1
 
-    def make_size(self, x, y, d):
-        return [ (x//256), (x%256), (y//256), (y%256), d]
+    def make_size(self, x, y, depth):
+        return [ (x//256), (x%256), (y//256), (y%256), depth]
 
     def make_image(self):
         # 256 x 256, grayscale: [ 1, 0, 1, 0, 1]

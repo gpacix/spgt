@@ -6,9 +6,9 @@ import time
 from parsearguments import parse
 from colors import *
 
-#BLUE=pygame.Color(0,0,255)
 ESC=27
 SPACE=32
+K_P=112
 
 class Timer:
     def __init__(self):
@@ -54,11 +54,11 @@ class App:
         self._running = True
 
     def receive_frame(self):
-        z = self.receive_all(s, 5)  # Warning: optimistic!
+        z = self.receive_all(sock, 5)  # Warning: optimistic!
         log(3, "recv complete: %s" % z)
         timer.stamptime()
         rsize = (z[0]*256 + z[1])*(z[2]*256 + z[3])*z[4]
-        data = self.receive_all(s, rsize)
+        data = self.receive_all(sock, rsize)
         timer.stamptime()
         self.display_data(z, data)
         timer.stamptime()
@@ -68,7 +68,7 @@ class App:
         while True:
             log(3, "sending %s" % msg)
             timer.stamptime()
-            s.send(msg)
+            sock.send(msg)
             log(3, "awaiting recv...")
             timer.stamptime()
             self.receive_frame()
@@ -98,16 +98,16 @@ class App:
                 return
             if event.key == SPACE:
                 self.rapid_fire = True
-            if event.key == 112: # p
+            if event.key == K_P:
                 timer.printtimes()
             msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
         if msg is not None:
             self.send_message(msg)
 
-    def receive_all(self, s, rsize):
+    def receive_all(self, sock, rsize):
         r = []
         while len(r) < rsize:
-            r += s.recv(rsize)
+            r += sock.recv(rsize)
         return bytes(r)
 
 
@@ -156,8 +156,8 @@ if __name__ == '__main__':
     VERBOSITY, HOST, PORT = parse(sys.argv[1:])
     print("HOST: %s  PORT: %d  VERBOSITY: %d" % (HOST, PORT, VERBOSITY))
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((HOST, PORT))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((HOST, PORT))
     theApp = App()
     theApp.on_execute()
 
