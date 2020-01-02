@@ -153,7 +153,9 @@ class App:
  
 if __name__ == '__main__':
     import sys
-    VERBOSITY, HOST, PORT = parse(sys.argv[1:])
+    vals = {'HOST': "localhost", 'PORT': 9999, 'VERBOSITY': 0}
+    vals = parse(sys.argv[1:], vals)
+    VERBOSITY, HOST, PORT = vals['VERBOSITY'], vals['HOST'],  vals['PORT']
     print("HOST: %s  PORT: %d  VERBOSITY: %d" % (HOST, PORT, VERBOSITY))
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
