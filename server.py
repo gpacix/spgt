@@ -143,13 +143,16 @@ class TheRequestHandler(socketserver.BaseRequestHandler):
 
     def handle_mousebuttondown(self, ds):
         # MOUSEBUTTONDOWN (34, 41) 1
+        # TODO: parse with regexps instead
         x = int(ds[1][1:-1])
         y = int(ds[2][:-1])
+        # TODO: pass the x and y to life, which will handle them
         lifex, lifey = x//SCALE, y//SCALE
         if lifex < SIZE and lifey < SIZE:
             life.toggle(lifex, lifey)
 
     def handle_keydown(self, ds):
+        # TODO: pass the code and flag to life, which will handle them
         code = int(ds[1])
         if ds[2] == b'f':
             pass

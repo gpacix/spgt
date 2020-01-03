@@ -6,9 +6,11 @@ import time
 from parsearguments import parse
 from colors import *
 
-ESC=27
-SPACE=32
-K_P=112
+# On a Mac, option -> alt and command -> meta
+MODIFIERS = [pygame.K_NUMLOCK, pygame.K_CAPSLOCK, pygame.K_SCROLLOCK, pygame.K_RSHIFT, pygame.K_LSHIFT,
+             pygame.K_RCTRL, pygame.K_LCTRL, pygame.K_RALT, pygame.K_LALT, pygame.K_RMETA, pygame.K_LMETA,
+             pygame.K_LSUPER, pygame.K_RSUPER, pygame.K_MODE]
+
 
 class Timer:
     def __init__(self):
@@ -76,8 +78,8 @@ class App:
                 break
             e = pygame.event.poll()
             while e and self.rapid_fire:
-                log(1, e, e.type)
-                if e.type == pygame.KEYUP and e.key == SPACE:
+                log(2, e, e.type)
+                if e.type == pygame.KEYUP and e.key == pygame.K_SPACE and not (e.mod & pygame.KMOD_SHIFT):
                     self.rapid_fire = False
                     break
                 e = pygame.event.poll()
@@ -87,21 +89,22 @@ class App:
         if event.type == pygame.QUIT:
             self._running = False
             return
-        if event.type != pygame.MOUSEMOTION:
-            log(1, event, event.type)
+        if event.type not in [pygame.MOUSEMOTION, pygame.ACTIVEEVENT]:
+            log(2, event, event.type)
         msg = None
         if event.type == pygame.MOUSEBUTTONDOWN:
             msg = bytes('MOUSEBUTTONDOWN %s %s' % (event.pos, event.button), 'ascii')
-        elif event.type == pygame.KEYDOWN: # unicode, key, mod
-            if event.key == ESC:
+        elif event.type == pygame.KEYDOWN and event.key not in MODIFIERS: # unicode, key, mod
+            if event.key == pygame.K_ESCAPE:
                 self._running = False
                 return
-            if event.key == SPACE:
+            elif event.key == pygame.K_SPACE and (event.mod & pygame.KMOD_SHIFT):
                 self.rapid_fire = True
-            if event.key == K_P:
+            elif event.key == pygame.K_p:
                 timer.printtimes()
             msg = bytes('KEYDOWN %s %s %s' % (event.key, event.mod, event.unicode), 'utf-8')
         if msg is not None:
+            log(1, "%s SENT" % msg)
             self.send_message(msg)
 
     def receive_all(self, sock, rsize):
@@ -124,9 +127,9 @@ class App:
         width = z[0]*256 + z[1]
         height = z[2]*256 + z[3]
         color_mode = z[4]
-        log(1, "width: %d  height: %d  color_mode: %d" % (width, height, color_mode))
+        log(2, "width: %d  height: %d  color_mode: %d" % (width, height, color_mode))
         buf = self.ensure_display(width, height, color_mode).get_buffer()
-        log(1, "buf.length = %d" % buf.length)
+        log(2, "buf.length = %d" % buf.length)
         #self._display_surf.fill(pygame.Color(data[0],data[0],data[0]), (0,0,width,height))
         if color_mode == 1:
             data1 = []
